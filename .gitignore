@@ -1,0 +1,68 @@
+# ---------------------------------------------------------------------------
+# Kredensial & konfigurasi lokal  (JANGAN pernah di-commit)
+# ---------------------------------------------------------------------------
+/config/config.local.php
+/config/config.local.*.php
+
+# Dump database: hanya skema instalasi yang ikut
+/config/*.sql
+!/config/database.sql
+/config/*.sql.gz
+
+# ---------------------------------------------------------------------------
+# Data pengguna (data pribadi sekolah / siswa) - simpan hanya berkas penjaga
+# ---------------------------------------------------------------------------
+/files/*
+!/files/.htaccess
+!/files/index.html
+
+/foto/fotosiswa/*
+!/foto/fotosiswa/.htaccess
+!/foto/fotosiswa/index.html
+
+/tugas/*
+!/tugas/.htaccess
+!/tugas/index.html
+
+/temp/*
+!/temp/.htaccess
+!/temp/index.html
+
+/panel/mod_setting/backup_soal/
+
+# Sisa modul import Word lama (CodeIgniter) yang sudah tidak dipakai
+/panel/pages/word_import/import/upload/*
+/panel/pages/word_import/import/sample/*.zip
+
+# Cache QR yang dibuat otomatis
+/panel/phpqrcode/cache/frame_*
+/panel/phpqrcode/cache/*.dat
+/panel/phpqrcode/cache/*.png
+
+# ---------------------------------------------------------------------------
+# Log, berkas sementara, paket hasil build
+# ---------------------------------------------------------------------------
+*.log
+*.bak
+*.tmp
+*.orig
+*.rej
+*.swp
+*.swo
+*~
+/dist-zip/
+*.zip.sha256
+
+# ---------------------------------------------------------------------------
+# OS / editor / Python
+# ---------------------------------------------------------------------------
+Thumbs.db
+ehthumbs.db
+desktop.ini
+.DS_Store
+*.lnk
+.vscode/
+.idea/
+__pycache__/
+*.pyc
+*.pyo

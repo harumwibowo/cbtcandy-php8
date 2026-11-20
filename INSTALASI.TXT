@@ -1,0 +1,665 @@
+=======================================================================
+ CANDY CBT 2.9.4 - PANDUAN INSTALASI
+=======================================================================
+
+Isi file ini:
+
+  BAGIAN 0 . Ringkasan & persyaratan
+  BAGIAN 1 . Instalasi di Laragon (Windows, lokal)
+  BAGIAN 2 . Instalasi di shared hosting cPanel
+  BAGIAN 3 . Instalasi di VPS kosong (Ubuntu + Nginx + PHP-FPM)
+  BAGIAN 4 . Checklist setelah instalasi
+  BAGIAN 5 . Masalah umum & solusinya
+  BAGIAN 6 . Struktur folder & izin tulis
+  BAGIAN 7 . Backup, reset, dan upgrade
+
+Seluruh perintah di file ini ditulis untuk dijalankan dari dalam folder
+proyek (folder yang berisi index.php, config/, panel/, vendor/).
+
+
+-----------------------------------------------------------------------
+ BAGIAN 0 - RINGKASAN & PERSYARATAN
+-----------------------------------------------------------------------
+
+Kebutuhan server:
+
+  - PHP 8.1 / 8.2 / 8.3   (diuji pada PHP 8.3.33 dan 8.3.35)
+  - MySQL 8.0 / 8.4 / 9.x, atau MariaDB 10.6+
+  - Ekstensi PHP: mysqli, gd, zip, mbstring, curl, openssl, json,
+    fileinfo, xml, dom, xmlwriter, xmlreader, iconv
+  - Apache dengan mod_rewrite  ATAU  Nginx (aturan rewrite disertakan
+    di BAGIAN 3)
+  - Composer 2.x hanya jika folder vendor/ belum ada di paket
+
+Tiga hal yang sama di semua platform:
+
+  1) Import file SQL  ->  config/database.sql
+  2) Isi kredensial DB ->  config/config.local.php
+  3) Pastikan folder upload bisa ditulis (lihat BAGIAN 6)
+
+Isi config/database.sql:
+
+  - 32 tabel kosong (semua utf8mb4), dibuat ulang dari nol
+  - 1 baris setting (identitas aplikasi, wajib ada)
+  - 1 akun admin    :  username "admin"  /  password "admin"
+  - 3 jenis ujian   :  PTS, PAS, USBK  (bisa diubah di Master > Jenis Ujian)
+
+Catatan: file SQL ini melakukan DROP TABLE lebih dulu, jadi mengimpornya
+ulang pada database yang sudah berisi data akan MENGHAPUS semua data.
+
+Akun awal:
+
+  Panel admin/guru :  http://domain-anda/panel/
+  Username         :  admin
+  Password         :  admin          <-- WAJIB diganti setelah login
+
+Alamat URL:
+
+  Siswa  :  http://domain-anda/          atau  http://domain-anda/candycbt/
+  Panel  :  http://domain-anda/panel/    atau  http://domain-anda/candycbt/panel/
+
+Base URL dideteksi otomatis dari request, jadi aplikasi bisa ditaruh di
+root domain (http://cbt.sekolah.sch.id/) maupun di subfolder
+(http://sekolah.sch.id/candycbt/) tanpa mengubah kode.
+
+Bentuk config/config.local.php yang benar (pilih salah satu):
+
+  Bentuk A (disarankan)
+    <?php
+    return [
+        'host' => 'localhost',
+        'port' => 3306,
+        'user' => 'user_db',
+        'pass' => 'password_db',
+        'name' => 'nama_db',
+    ];
+
+  Bentuk B
+    <?php
+    $db_config = [
+        'host' => 'localhost',
+        'port' => 3306,
+        'user' => 'user_db',
+        'pass' => 'password_db',
+        'name' => 'nama_db',
+    ];
+
+Selain file itu, kredensial juga bisa diberikan lewat environment
+variable: DB_HOST, DB_PORT, DB_USER, DB_PASS, DB_NAME.
+Nama database default (jika config.local.php tidak ada) adalah "candyold".
+
+
+-----------------------------------------------------------------------
+ BAGIAN 1 - INSTALASI DI LARAGON (WINDOWS)
+-----------------------------------------------------------------------
+
+Prasyarat: Laragon 5/6/8 sudah terpasang, berisi PHP 8.3 dan MySQL 8.
+Pada Laragon 8.x PHP 8.3 sudah memuat semua ekstensi yang dibutuhkan.
+
+LANGKAH 1 - Salin proyek
+  Ekstrak folder proyek ke:
+      C:\laragon\www\candycbt
+  (sesuaikan dengan lokasi Laragon Anda, mis. C:\laragon87\www\candycbt)
+
+LANGKAH 2 - Jalankan Laragon
+  Klik "Start All". Pastikan Apache/Nginx dan MySQL berstatus jalan
+  (ikon di tray berwarna hijau).
+
+LANGKAH 3 - Pastikan PHP 8.3 aktif
+  Klik kanan ikon tray Laragon > PHP > Version > pilih php-8.3.x
+  Cek dengan membuka Menu > PHP > phpinfo(), pastikan "PHP Version 8.3.x".
+
+LANGKAH 4 - Aktifkan ekstensi PHP
+  Menu > PHP > Extensions : centang zip, gd, mbstring, mysqli, curl,
+  openssl, fileinfo, intl (biasanya sudah aktif default).
+  Setelah mengubah ekstensi: Stop, lalu Start All lagi.
+
+LANGKAH 5 - Buat database dan import
+  Cara cepat lewat Terminal Laragon (Menu > Terminal):
+
+      mysql -u root -e "CREATE DATABASE candyold CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;"
+      mysql -u root candyold < config/database.sql
+
+  Password root MySQL Laragon default kosong (langsung Enter).
+  Jika root punya password, tambahkan -p :
+
+      mysql -u root -p candyold < config/database.sql
+
+  Cara GUI:
+      1. Buka HeidiSQL / phpMyAdmin dari menu Laragon
+      2. Buat database baru: nama "candyold", collation utf8mb4_general_ci
+      3. Pilih database tersebut > tab Import / File > Run SQL file
+      4. Pilih file config/database.sql > jalankan
+
+LANGKAH 6 - Kredensial database
+  Laragon default memakai user "root" tanpa password dan database
+  "candyold", yang persis sama dengan nilai default aplikasi.
+  Jadi pada instalasi Laragon standar TIDAK ADA file yang perlu diubah.
+
+  Jika password root MySQL Anda tidak kosong, buat file
+  config/config.local.php (lihat BAGIAN 0) dan isi user/pass sesuai.
+
+LANGKAH 7 - Dependency PHP (vendor/)
+  Folder vendor/ sudah disertakan dalam paket, jadi langkah ini boleh
+  dilewati. Hanya jika folder vendor/ tidak ada:
+
+      cd C:\laragon\www\candycbt
+      composer install --no-dev --optimize-autoloader
+
+LANGKAH 8 - Buka aplikasi
+  Karena Laragon otomatis membuat virtual host dari nama folder, alamat
+  yang bisa dipakai:
+
+      http://candycbt.test/panel/
+      http://localhost/candycbt/panel/
+
+  Login: admin / admin. Halaman siswa: http://candycbt.test/
+
+LARAGON + HTTPS/domain lokal: tidak perlu, cukup untuk uji coba.
+Untuk mengakses dari HP siswa di jaringan sekolah, pakai IP LAN
+(mis. http://192.168.1.10/candycbt/) dan pastikan firewall Windows
+mengizinkan Apache (port 80).
+
+
+-----------------------------------------------------------------------
+ BAGIAN 2 - INSTALASI DI SHARED HOSTING CPANEL
+-----------------------------------------------------------------------
+
+LANGKAH 1 - Upload proyek
+  1. Login cPanel > File Manager
+  2. Masuk ke public_html
+  3. Upload file ZIP proyek
+  4. Klik kanan ZIP > Extract
+
+  Pilihan lokasi:
+     - Subfolder : public_html/candycbt   -> URL domain.com/candycbt/
+     - Root domain: public_html           -> URL domain.com/
+       (jika di public_html sudah ada index.html atau index.php milik
+       situs lain, pindahkan/rename dulu agar tidak bentrok)
+
+LANGKAH 2 - Set versi PHP
+  cPanel > MultiPHP Manager (atau Select PHP Version):
+      - Pilih domain/subdomain yang dipakai
+      - Set ke PHP 8.3 (jika tidak tersedia: 8.2, minimal 8.1)
+      - Klik Apply
+
+  Lalu cek ekstensi (Select PHP Version > Extensions / Options):
+      mysqli, gd, zip, mbstring, curl, openssl, fileinfo, xml, dom,
+      xmlwriter, simplexml, iconv
+
+  Jika "zip" tidak ada di daftar, hubungi support hosting untuk
+  mengaktifkan ekstensi zip (dibutuhkan untuk export/import Excel).
+  Tanpa zip, aplikasi tetap jalan tetapi fitur Excel akan error.
+
+LANGKAH 3 - Buat database + user
+  cPanel > MySQL Databases:
+      1. Create New Database  : candyold
+         -> nama final akan berprefix akun, mis. sekolah_candyold
+      2. Add New User         : candyuser + password kuat
+         -> nama final mis. sekolah_candyuser
+      3. Add User To Database : pilih user + database
+         -> centang ALL PRIVILEGES > Make Changes
+
+  Catat tiga nilai ini: nama database final, nama user final, password.
+
+LANGKAH 4 - Import database
+  1. cPanel > phpMyAdmin
+  2. Klik nama database di panel kiri (mis. sekolah_candyold).
+     Jangan sampai lupa memilih database, kalau tidak import akan gagal.
+  3. Tab "Import" > Choose File > pilih config/database.sql
+  4. Format: SQL, character set: utf-8 > Go
+
+  Ukuran file sekitar 25 KB, jauh di bawah batas upload phpMyAdmin.
+  Berhasil jika muncul "Import has been successfully finished" dan
+  tampil 32 tabel di panel kiri.
+
+LANGKAH 5 - Buat config/config.local.php
+  File Manager > masuk folder config > + File > nama: config.local.php
+  Isi (sesuaikan dengan LANGKAH 3):
+
+      <?php
+      return [
+          'host' => 'localhost',
+          'port' => 3306,
+          'user' => 'sekolah_candyuser',
+          'pass' => 'PASSWORD_DB_ANDA',
+          'name' => 'sekolah_candyold',
+      ];
+
+  Simpan dengan encoding UTF-8 (tanpa BOM) dan akhiran .php.
+
+LANGKAH 6 - Izin file dan folder
+  File Manager > klik kanan > Change Permissions:
+      - Semua folder : 755
+      - Semua file   : 644
+  Folder yang WAJIB bisa ditulis (lihat BAGIAN 6):
+      files/, foto/, berkas/, tugas/, temp/, dist/img/,
+      panel/mod_setting/, panel/phpqrcode/temp/, panel/phpqrcode/cache/
+
+  Pada cPanel, pemilik file adalah akun Anda sendiri sehingga 755
+  biasanya sudah cukup. Jika upload gagal, coba 775 pada folder di atas.
+
+LANGKAH 7 - Pastikan .htaccess terbaca
+  File .htaccess sudah disertakan di root proyek dan berisi aturan
+  rewrite ke index.php. Di cPanel, mod_rewrite aktif secara default.
+  Jika URL seperti /jadwal atau /konfirmasi/xxx menghasilkan 404,
+  berarti mod_rewrite / AllowOverride dimatikan oleh hosting:
+  hubungi support atau gunakan URL dengan index.php.
+
+LANGKAH 8 - Dependency (vendor/)
+  Paling mudah: upload ZIP proyek lengkap termasuk folder vendor/.
+  Jika ingin tanpa vendor/ dan cPanel menyediakan Terminal:
+
+      cd ~/public_html/candycbt
+      composer install --no-dev --optimize-autoloader
+
+  Jika tidak ada Terminal dan tidak ada vendor/, jalankan perintah
+  composer di komputer (Laragon) lalu upload folder vendor/ hasilnya.
+
+LANGKAH 9 - Buka panel
+  http://domain-anda/candycbt/panel/     (atau http://domain-anda/panel/)
+  Login: admin / admin  ->  segera ganti password.
+
+LANGKAH 10 - SSL
+  cPanel > SSL/TLS Status > Run AutoSSL, atau aktifkan Let's Encrypt
+  untuk domain. Setelah HTTPS aktif, akses panel lewat https://.
+  (Tidak ada setting URL di aplikasi yang perlu diubah: base URL
+  mengikuti host yang diakses.)
+
+-----------------------------------------------------------------------
+ BAGIAN 3 - INSTALASI DI VPS KOSONG (UBUNTU + NGINX + PHP-FPM)
+-----------------------------------------------------------------------
+
+Diasumsikan: VPS baru, Ubuntu 24.04 LTS (PHP 8.3 tersedia di repo resmi),
+akses root/sudo, domain sudah diarahkan ke IP VPS.
+Untuk Ubuntu 22.04, PHP 8.3 harus diambil dari PPA ondrej.
+
+Semua perintah dijalankan sebagai root atau dengan sudo.
+
+LANGKAH 1 - Update sistem dan pasang paket dasar
+
+      apt update && apt upgrade -y
+      apt install -y nginx mysql-server unzip curl git
+
+LANGKAH 2 - Pasang PHP 8.3 dan ekstensinya
+
+  Ubuntu 24.04:
+      apt install -y php8.3-fpm php8.3-mysqli php8.3-gd php8.3-zip \
+                     php8.3-mbstring php8.3-curl php8.3-xml php8.3-intl
+
+  Ubuntu 22.04:
+      apt install -y software-properties-common
+      add-apt-repository ppa:ondrej/php -y
+      apt update
+      apt install -y php8.3-fpm php8.3-mysqli php8.3-gd php8.3-zip \
+                     php8.3-mbstring php8.3-curl php8.3-xml php8.3-intl
+
+  Verifikasi:
+      php -v
+      php -m | grep -E "mysqli|gd|zip|mbstring|curl|xml"
+
+LANGKAH 3 - Amankan MySQL
+
+      mysql_secure_installation
+
+  Jawab: set root password (ya), hapus anonymous user (ya),
+  larang root login remote (ya), hapus test database (ya).
+
+  MySQL 8.4 mengaktifkan caching_sha2_password secara default dan itu
+  didukung penuh oleh PHP 8.3 (mysqlnd), jadi tidak perlu diubah.
+
+LANGKAH 4 - Buat database dan user
+
+      mysql -u root -p
+
+      CREATE DATABASE candyold CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+      CREATE USER 'candyuser'@'localhost' IDENTIFIED BY 'PasswordKuat123!';
+      GRANT ALL PRIVILEGES ON candyold.* TO 'candyuser'@'localhost';
+      FLUSH PRIVILEGES;
+      EXIT;
+
+LANGKAH 5 - Upload proyek ke server
+
+  Dari komputer Anda (PowerShell/CMD/Git Bash):
+
+      scp -r candycbt root@IP-VPS:/var/www/candycbt
+
+  Atau dari dalam VPS, jika proyek ada di Git:
+
+      git clone URL-REPO /var/www/candycbt
+
+LANGKAH 6 - Import database
+
+      mysql -u candyuser -p candyold < /var/www/candycbt/config/database.sql
+
+  (masukkan password candyuser saat diminta)
+
+LANGKAH 7 - Buat config/config.local.php
+
+      nano /var/www/candycbt/config/config.local.php
+
+      <?php
+      return [
+          'host' => 'localhost',
+          'port' => 3306,
+          'user' => 'candyuser',
+          'pass' => 'PasswordKuat123!',
+          'name' => 'candyold',
+      ];
+
+  Simpan (Ctrl+O, Enter, Ctrl+X).
+
+LANGKAH 8 - Kepemilikan dan izin file
+
+      chown -R www-data:www-data /var/www/candycbt
+      find /var/www/candycbt -type d -exec chmod 755 {} \;
+      find /var/www/candycbt -type f -exec chmod 644 {} \;
+
+  Folder yang perlu bisa ditulis www-data: lihat BAGIAN 6.
+  Dengan chown di atas biasanya sudah beres.
+
+LANGKAH 9 - Setel php.ini (php-fpm)
+
+      nano /etc/php/8.3/fpm/php.ini
+
+  Sesuaikan (dibutuhkan untuk import Excel, upload foto/soal, backup):
+
+      upload_max_filesize = 64M
+      post_max_size = 64M
+      max_execution_time = 300
+      memory_limit = 256M
+      date.timezone = Asia/Jakarta
+
+  Lalu:
+
+      systemctl restart php8.3-fpm
+
+LANGKAH 10 - Konfigurasi Nginx
+
+      nano /etc/nginx/sites-available/candycbt
+
+      server {
+          listen 80;
+          server_name cbt.domain-anda.com;
+
+          root /var/www/candycbt;
+          index index.php index.html;
+
+          client_max_body_size 64M;
+
+          # Rewrite: meniru aturan .htaccess Apache (jadwal, soal, konfirmasi/xxx)
+          location / {
+              try_files $uri $uri/ /index.php?$query_string;
+          }
+
+          location ~ \.php$ {
+              include snippets/fastcgi-php.conf;
+              fastcgi_pass unix:/run/php/php8.3-fpm.sock;
+              fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+          }
+
+          # Jangan izinkan file konfigurasi & SQL diunduh lewat browser
+          location ^~ /config/ { deny all; }
+          location ^~ /vendor/ { deny all; }
+
+          location ~ /\.(?!well-known).* { deny all; }
+      }
+
+  Aktifkan dan uji:
+
+      ln -s /etc/nginx/sites-available/candycbt /etc/nginx/sites-enabled/
+      rm -f /etc/nginx/sites-enabled/default
+      nginx -t
+      systemctl reload nginx
+      systemctl enable nginx php8.3-fpm mysql
+
+  PENTING: aturan "try_files ... /index.php" wajib ada. Tanpa itu URL
+  seperti http://domain/jadwal atau http://domain/konfirmasi/xxx akan
+  menghasilkan 404, karena .htaccess tidak dibaca oleh Nginx.
+
+LANGKAH 11 - Uji dari browser
+
+      http://cbt.domain-anda.com/panel/
+      Login: admin / admin
+
+LANGKAH 12 - HTTPS gratis (opsional tapi disarankan)
+
+      apt install -y certbot python3-certbot-nginx
+      certbot --nginx -d cbt.domain-anda.com
+
+  Certbot akan mengubah konfigurasi Nginx dan memasang perpanjangan
+  otomatis. Setelah itu akses panel lewat https://.
+
+LANGKAH 13 - Firewall
+
+      ufw allow OpenSSH
+      ufw allow 'Nginx Full'
+      ufw enable
+
+  Untuk ujian serentak satu sekolah, perhatikan kapasitas: PHP-FPM
+  default (pm.max_children = 5) terlalu kecil. Ubah di
+  /etc/php/8.3/fpm/pool.d/www.conf, misalnya untuk VPS 2 GB RAM:
+
+      pm = dynamic
+      pm.max_children = 25
+      pm.start_servers = 5
+      pm.min_spare_servers = 5
+      pm.max_spare_servers = 10
+
+  lalu systemctl restart php8.3-fpm.
+
+  Untuk instalasi di subfolder (mis. https://domain/candycbt), cukup
+  ubah root menjadi /var/www/candycbt dan tetap pakai blok try_files
+  yang sama.
+
+
+-----------------------------------------------------------------------
+ BAGIAN 4 - CHECKLIST SETELAH INSTALASI
+-----------------------------------------------------------------------
+
+1. Login panel (admin / admin) -> ganti password.
+   Menu profil: klik nama pengguna di kanan atas, atau buka
+   index.php?pg=editguru ; isi kolom password untuk mengganti.
+
+2. Menu Setting: isi nama sekolah, jenjang, nama kepala sekolah + NIP,
+   alamat, logo, dan "waktu" (zona waktu, mis. Asia/Jakarta).
+   Logo/background kartu di-upload di halaman yang sama.
+
+3. Menu Master: buat data dasar secara berurutan
+      - Jurusan (jika SMK)
+      - Kelas (mis. X-IPA-1, XI-IPS-2)
+      - Mata Pelajaran (mapel)
+      - Ruang, Sesi, Level, Jenis Ujian (PTS/PAS/USBK sudah terisi)
+
+4. Menu Guru / Pengawas: buat akun guru dan pengawas
+   (password guru di-hash otomatis oleh aplikasi).
+
+5. Menu Siswa: tambah satu per satu, atau import Excel
+   (unduh template dari halaman import).
+
+6. Menu Jadwal / Ujian: buat ujian, pilih mapel + kelas + jumlah soal,
+   atur token dan waktu mulai/selesai.
+
+7. Menu Bank Soal: input soal (manual atau import Excel), lalu
+   aktifkan/publish ke ujian.
+
+8. Uji coba menyeluruh: login sebagai siswa di HP, kerjakan 1 ujian
+   sampai selesai, lalu cek Menu Nilai.
+
+9. Pastikan folder backup (panel/mod_setting/backup_soal) tidak bisa
+   diakses publik tanpa login, atau unduh lalu hapus hasil backup.
+
+
+-----------------------------------------------------------------------
+ BAGIAN 5 - MASALAH UMUM & SOLUSINYA
+-----------------------------------------------------------------------
+
+1. Halaman blank / putih
+   - Set APP_DEBUG=1 (environment variable) lalu buka lagi halamannya.
+     Di Laragon bisa disetel dari Menu > Environment, atau lewat
+     SetEnv APP_DEBUG 1 di .htaccess.
+   - Cek log: Apache/Nginx error log, PHP error log, atau
+     /var/log/nginx/error.log dan /var/log/php8.3-fpm.log.
+   - Paste pesan error yang muncul saat mencari bantuan.
+
+2. "Koneksi database gagal"
+   - Periksa config/config.local.php (user, password, host, port, nama DB).
+   - Host "localhost" pada cPanel, "127.0.0.1" pada VPS/Laragon.
+   - Pastikan user database punya hak akses ke database tersebut.
+
+3. "Database belum tersedia"
+   - File SQL belum diimport, atau nama database di config berbeda
+     dengan yang diimport (perhatikan prefix akun di cPanel,
+     mis. sekolah_candyold).
+
+
+4. Muncul popup "Kesalahan Versi Database"
+   - Nilai setting.db_versi di database berbeda dengan konstanta
+     VERSI_DB di config/config.candy.php.
+   - Samakan, misalnya:  UPDATE setting SET db_versi='2.9.4';
+     atau ubah define("VERSI_DB", "2.9.4") di config tersebut.
+
+5. Export/import Excel error "Class ZipArchive not found"
+   - Ekstensi zip belum aktif. Laragon: Menu > PHP > Extensions > zip,
+     lalu restart. cPanel: Select PHP Version > Extensions > zip.
+     VPS: apt install php8.3-zip && systemctl restart php8.3-fpm.
+
+6. Upload logo/foto/soal gagal atau file hilang
+   - Folder tujuan tidak bisa ditulis. Lihat BAGIAN 6 dan atur izin.
+
+7. URL /jadwal atau /konfirmasi/xxx menghasilkan 404
+   - Apache: mod_rewrite / AllowOverride belum aktif.
+   - Nginx: aturan try_files belum dipasang (BAGIAN 3 LANGKAH 10).
+
+8. Login berhasil tetapi kembali ke halaman login
+   - Session PHP tidak bisa ditulis. Pastikan session.save_path ada
+     dan bisa ditulis.
+   - Jika memakai HTTPS dan HTTP campuran, gunakan satu skema saja.
+
+9. Waktu ujian tidak sesuai
+   - Isi Setting > waktu (mis. Asia/Jakarta) dan set date.timezone
+     di php.ini. Zona waktu dipakai untuk token, log, dan sisa waktu.
+
+10. Import soal/siswa dari Excel gagal
+   - Gunakan format yang disediakan (template dari halaman import).
+   - Format .xls harus Excel 97-2003 (bukan HTML/CSV yang di-rename),
+     atau gunakan .xlsx untuk template master.
+
+11. Muncul warning "Trying to access array offset on null" di laporan
+   - Normal saat data nilai/peserta belum ada. Warning tidak
+     ditampilkan pada mode produksi (APP_DEBUG mati) dan tidak
+     mengubah hasil laporan.
+
+12. Menu "Materi" pada panel menampilkan halaman kosong
+   - Modul materi/materi.php tidak disertakan pada paket ini (sudah
+     demikian sejak versi sebelumnya). Menu lain tidak terpengaruh.
+
+
+-----------------------------------------------------------------------
+ BAGIAN 6 - STRUKTUR FOLDER & IZIN TULIS
+-----------------------------------------------------------------------
+
+Struktur penting:
+
+  index.php                  halaman utama siswa (login, jadwal, ujian)
+  soal.php, selesai.php       alur pengerjaan ujian siswa
+  panel/                      panel admin / guru / pengawas
+  panel/pages/word_import/    modul lama (CodeIgniter), tidak dipakai panel
+  config/config.database.php  koneksi database (default + override)
+  config/config.local.php     kredensial DB Anda (dibuat sendiri)
+  config/config.default.php   bootstrap: session, base URL, mode debug
+  config/config.candy.php     konstanta versi aplikasi
+  config/compat.php           shim kompatibilitas PHP 8
+  config/database.sql         SATU-SATUNYA file SQL instalasi
+  dist/, plugins/             aset tampilan (CSS, JS, gambar)
+  files/                      lampiran soal yang di-upload
+  foto/fotosiswa/             foto siswa (dari upload ZIP)
+  berkas/                     file tugas dari guru
+  tugas/                      jawaban/berkas tugas dari siswa
+  temp/                       berkas sementara
+  vendor/                     dependency composer
+
+Folder yang WAJIB bisa ditulis oleh user web server (www-data /
+akun cPanel):
+
+  files/
+  foto/fotosiswa/
+  berkas/
+  tugas/
+  temp/
+  dist/img/                  upload logo, tanda tangan, background kartu
+  panel/mod_setting/         backup database & backup soal
+  panel/phpqrcode/temp/
+  panel/phpqrcode/cache/
+
+Contoh di VPS:
+
+  chown -R www-data:www-data /var/www/candycbt
+  chmod -R 755 /var/www/candycbt
+  chmod -R 775 /var/www/candycbt/files /var/www/candycbt/temp \
+        /var/www/candycbt/berkas /var/www/candycbt/tugas \
+        /var/www/candycbt/dist/img /var/www/candycbt/panel/mod_setting
+
+File config/config.database.php, config/config.local.php, dan
+config/database.sql TIDAK boleh bisa diakses lewat browser.
+Paket ini sudah menyertakan config/.htaccess yang memblokir akses itu
+pada Apache. Pada Nginx, tambahkan di dalam blok server:
+
+  location ^~ /config/ { deny all; }
+  location ^~ /vendor/ { deny all; }
+
+
+-----------------------------------------------------------------------
+ BAGIAN 7 - BACKUP, RESET, DAN UPGRADE
+-----------------------------------------------------------------------
+
+BACKUP RUTIN
+  1. Database:
+     - Panel > Setting > Backup (menghasilkan file .sql)
+     - atau dari terminal:
+         mysqldump -u candyuser -p candyold > backup_tanggal.sql
+  2. File upload: folder files/, foto/, berkas/, tugas/, dist/img/
+  3. Simpan salinan config/config.local.php (berisi kredensial).
+
+RESET TOTAL (mulai dari nol lagi)
+  Import ulang file instalasi. Semua tabel di-DROP lebih dulu, jadi
+  seluruh data (siswa, soal, nilai, dsb) hilang dan kembali ke kondisi
+  awal dengan akun admin/admin:
+
+      mysql -u candyuser -p candyold < config/database.sql
+
+  Lakukan hanya setelah backup.
+
+MENGOSONGKAN DATA TANPA MENGHAPUS STRUKTUR
+  Untuk menghapus data ujian/siswa tetapi tetap memakai pengaturan,
+  guru, kelas, dan mapel yang sudah ada:
+
+      mysql -u candyuser -p candyold -e "
+        TRUNCATE TABLE jawaban; TRUNCATE TABLE jawaban_tugas;
+        TRUNCATE TABLE nilai;   TRUNCATE TABLE nilai_temp;
+        TRUNCATE TABLE log;     TRUNCATE TABLE token;
+        TRUNCATE TABLE soal;    TRUNCATE TABLE ujian;
+        TRUNCATE TABLE siswa;"
+
+UPGRADE KE VERSI BARU
+  1. Backup database dan folder upload.
+  2. Ganti semua file proyek dengan versi baru, KECUALI:
+       - config/config.local.php
+       - folder files/, foto/, berkas/, tugas/, dist/img/
+  3. Jika pembuat aplikasi menyertakan file SQL migrasi, jalankan
+     setelah backup. JANGAN import config/database.sql pada database
+     yang sudah berisi data, karena itu akan mengosongkan semuanya.
+  4. Login dan uji halaman utama.
+
+PINDAH SERVER (Laragon -> hosting, atau hosting -> VPS)
+  1. Export database dari server lama (mysqldump / Backup panel).
+  2. Salin seluruh folder proyek + folder upload.
+  3. Import database di server baru.
+  4. Sesuaikan config/config.local.php dengan kredensial server baru.
+  5. Atur ulang izin tulis (BAGIAN 6).
+  6. Base URL tidak perlu diubah: aplikasi mendeteksi otomatis.
+
+=======================================================================
+ Selesai. Saat meminta bantuan teknis, sertakan: versi PHP, versi
+ MySQL, platform (Laragon/cPanel/VPS), dan pesan error lengkap dari log.
+=======================================================================
