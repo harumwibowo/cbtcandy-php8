@@ -6,20 +6,30 @@ Web Candy - http://candycbt.id
 
 **Versi ini sudah disesuaikan agar berjalan di PHP 8.3.x dan MySQL 8.0 / 8.4 / 9.x.**
 
+[![Cek sintaks PHP](https://github.com/harumwibowo/cbtcandy-php8/actions/workflows/lint.yml/badge.svg)](https://github.com/harumwibowo/cbtcandy-php8/actions/workflows/lint.yml)
+![PHP 8.1 - 8.3](https://img.shields.io/badge/PHP-8.1%20--%208.3-777bb4)
+![MySQL 8.x](https://img.shields.io/badge/MySQL-8.0%20%2F%208.4%20%2F%209.x-4479a1)
+![Lisensi MIT](https://img.shields.io/badge/lisensi-MIT-green)
+
 > Panduan instalasi langkah-demi-langkah untuk **Laragon**, **shared hosting cPanel**,
 dan **VPS Ubuntu (Nginx)** ada di file [`INSTALASI.TXT`](INSTALASI.TXT).
 > Ringkasan singkat tetap tersedia di bagian 2 di bawah.
 
 > **Repositori:** <https://github.com/harumwibowo/cbtcandy-php8>
+> **Paket rilis (.zip):** <https://github.com/harumwibowo/cbtcandy-php8/releases/latest>
 
 ### Mengunduh untuk instalasi fresh
 
-Repositori ini sudah menyertakan folder `vendor/` (PhpSpreadsheet, PhpWord, Predis),
-jadi penerima **tidak perlu menjalankan `composer install`**:
+Cara paling mudah: buka halaman [**Releases**](https://github.com/harumwibowo/cbtcandy-php8/releases/latest)
+unduh `candycbt-2.9.4.zip` — di dalamnya sudah ada `vendor/`
+(PhpSpreadsheet, PhpWord, Predis) beserta folder `candycbt-2.9.4/` yang rapi,
+jadi penerima **tidak perlu** `composer install`.
+
+Alternatif (ikut repositori):
 
 ```bash
 git clone https://github.com/harumwibowo/cbtcandy-php8.git candycbt
-# atau tanpa git: buka repo -> tombol Code -> Download ZIP -> ekstrak
+# atau: tombol Code -> Download ZIP (repo ini juga sudah menyertakan vendor/)
 ```
 
 Setelah itu tetap ada 3 langkah wajib (detail di `INSTALASI.TXT`):
@@ -27,10 +37,11 @@ Setelah itu tetap ada 3 langkah wajib (detail di `INSTALASI.TXT`):
 1. Buat database MySQL kosong, lalu import `config/database.sql`.
 2. Sesuaikan host / nama database / user / password di `config/config.database.php`
    (disarankan lewat `config/config.local.php` yang tidak ikut di repositori).
-3. Buka `http://localhost/candycbt/` dan login `admin` / `admin`, lalu ganti password.
+3. Buka aplikasi di browser dan login `admin` / `admin`, lalu ganti password.
 
 Berkas `config/config.local.php`, dump database, foto siswa, dan berkas unggahan
 sengaja **tidak** ada di repositori (lihat `.gitignore`) agar aman dibagikan publik.
+Rincian perubahan tiap versi ada di [`CHANGELOG.md`](CHANGELOG.md).
 
 ---
 

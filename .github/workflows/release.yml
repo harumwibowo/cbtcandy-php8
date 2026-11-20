@@ -1,0 +1,146 @@
+name: Rilis paket ZIP
+
+# Dibuat otomatis saat push tag versi (mis. v2.9.4) atau dijalankan manual
+# (Actions -> "Rilis paket ZIP" -> Run workflow).
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  paket:
+    name: Bangun ZIP + GitHub Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ambil kode
+        uses: actions/checkout@v4
+
+      - name: Versi PHP
+        run: php -v
+
+      - name: Cek sintaks PHP (tanpa vendor)
+        run: |
+          set -o pipefail
+          find . -path ./vendor -prune -o -name '*.php' -print0 \
+            | xargs -0 -n1 -P4 php -l > /tmp/lint.log 2>&1
+          total=$(grep -c 'No syntax errors' /tmp/lint.log || true)
+          echo "Berkas lolos: $total"
+          if [ "$total" -ne "$(find . -path ./vendor -prune -o -name '*.php' -print | wc -l)" ]; then
+            echo "::error::Ada berkas PHP yang gagal di-parse PHP 8.3:"
+            grep -v 'No syntax errors' /tmp/lint.log
+            exit 1
+          fi
+
+      - name: Baca versi aplikasi
+        id: versi
+        run: |
+          set -e
+          VERSI=$(grep -oP 'define\("VERSI", "\K[^"]+' config/config.candy.php)
+          echo "versi=$VERSI" >> "$GITHUB_OUTPUT"
+          echo "Versi terdeteksi: $VERSI"
+
+      - name: Bangun ZIP distribusi
+        run: |
+          set -e
+          python3 --version
+          python3 tools/buat-paket.py --checksum \
+            --output "dist-zip/candycbt-${{ steps.versi.outputs.versi }}.zip"
+          ls -lh dist-zip/
+
+      - name: Periksa isi ZIP
+        env:
+          VERSI: ${{ steps.versi.outputs.versi }}
+        run: |
+          set -e
+          python3 - <<'PY'
+          import os, sys, zipfile
+
+          versi = os.environ['VERSI']
+          zip_path = 'dist-zip/candycbt-%s.zip' % versi
+          root = 'candycbt-%s' % versi
+
+          z = zipfile.ZipFile(zip_path)
+          assert z.testzip() is None, 'CRC zip rusak'
+          names = set(z.namelist())
+
+          wajib = [
+              'config/database.sql', 'config/config.candy.php', 'config/compat.php',
+              'vendor/autoload.php', 'INSTALASI.TXT', 'README.md', 'index.php',
+              'panel/index.php', 'panel/template/importdatasoal.docx',
+              'panel/template/importdatasoal.xls',
+              'files/.htaccess', 'tugas/index.html', 'foto/fotosiswa/index.html',
+          ]
+          hilang = [w for w in wajib if '%s/%s' % (root, w) not in names]
+          assert not hilang, 'berkas wajib tidak ada di zip: %s' % hilang
+
+          terlarang = [n for n in names if 'config.local.php' in n
+                       or (n.endswith('.sql') and not n.endswith('config/database.sql'))]
+          assert not terlarang, 'berkas sensitif ikut terpaket: %s' % terlarang[:5]
+
+          print('Isi ZIP OK: %d entri, root %s/' % (len(names), root))
+          PY
+
+      - name: Siapkan catatan rilis
+        env:
+          VERSI: ${{ steps.versi.outputs.versi }}
+        run: |
+          set -e
+          python3 - <<'PY'
+          import os
+
+          versi = os.environ['VERSI']
+          sum_ = open('dist-zip/candycbt-%s.zip.sha256' % versi).read().split()[0]
+
+          text = """## Candy CBT {v} - PHP 8.3 / MySQL 8
+
+          Paket ZIP siap pakai. Folder di dalam zip: `candycbt-{v}/`.
+
+          ### Isi paket
+          - Aplikasi lengkap + `vendor/` (PhpSpreadsheet 2.x, PhpWord 1.x, Predis 2.x),
+            jadi penerima **tidak perlu** menjalankan `composer install`.
+          - Skema database fresh `config/database.sql`: 32 tabel kosong + admin awal
+            `admin` / `admin` (wajib diganti setelah login).
+          - Template import soal: `importdatasoal.xls` (NO, SOAL, A-E, JAWABAN, JENIS)
+            dan `importdatasoal.docx` (tabel NO, SOAL, A-E, KUNCI).
+          - Panduan instalasi `INSTALASI.TXT` (Laragon, shared hosting cPanel, VPS)
+            serta ringkasan teknis `README.md`.
+          - Base URL dideteksi otomatis, bisa di subfolder (`/candycbt`) maupun root domain.
+
+          ### Instalasi singkat
+          1. Ekstrak, taruh folder `candycbt-{v}` di web root.
+          2. Buat database MySQL kosong (utf8mb4) lalu import `config/database.sql`.
+          3. Sesuaikan `config/config.database.php` atau buat `config/config.local.php`.
+          4. Buka aplikasi di browser, login `admin` / `admin`, ganti password.
+
+          Paket ini tidak memuat kredensial, dump database, maupun data siswa/guru.
+
+          ### Verifikasi
+          SHA-256 paket: `{s}`
+          """.format(v=versi, s=sum_)
+
+          open('/tmp/catatan.md', 'w').write(text)
+          print(text)
+          PY
+
+      - name: Buat / perbarui GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSI: ${{ steps.versi.outputs.versi }}
+        run: |
+          set -e
+          TAG="v$VERSI"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Rilis $TAG sudah ada - mengganti aset."
+            gh release upload "$TAG" dist-zip/*.zip dist-zip/*.sha256 --clobber
+          else
+            gh release create "$TAG" \
+              --title "Candy CBT $VERSI" \
+              --notes-file /tmp/catatan.md \
+              dist-zip/*.zip dist-zip/*.sha256
+          fi
+          gh release view "$TAG" --json tagName,url,assets \
+            --jq '.tagName + " -> " + (.assets | map(.name) | join(", ")) + "  " + .url'

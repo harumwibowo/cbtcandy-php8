@@ -1,0 +1,34 @@
+name: Cek sintaks PHP
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: php -l (${{ github.ref_name }})
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ambil kode
+        uses: actions/checkout@v4
+
+      - name: Versi PHP
+        run: php -v
+
+      - name: Periksa sintaks semua berkas PHP (tanpa vendor)
+        run: |
+          set -o pipefail
+          find . -path ./vendor -prune -o -name '*.php' -print0 \
+            | xargs -0 -n1 -P4 php -l > /tmp/lint.log 2>&1
+          total=$(grep -c 'No syntax errors' /tmp/lint.log || true)
+          echo "Berkas lolos: $total"
+          if [ "$total" -ne "$(find . -path ./vendor -prune -o -name '*.php' -print | wc -l)" ]; then
+            echo "::error::Ada berkas PHP yang gagal di-parse PHP 8.3:"
+            grep -v 'No syntax errors' /tmp/lint.log
+            exit 1
+          fi

@@ -13,6 +13,15 @@ Isi file ini:
   BAGIAN 6 . Struktur folder & izin tulis
   BAGIAN 7 . Backup, reset, dan upgrade
 
+Sumber paket:
+  Repositori    : https://github.com/harumwibowo/cbtcandy-php8
+  Paket rilis   : https://github.com/harumwibowo/cbtcandy-php8/releases/latest
+  Unduh ZIP repo: tombol Code > Download ZIP (vendor/ sudah disertakan)
+
+  Paket ZIP rilis sudah berisi folder vendor/, jadi TIDAK perlu menjalankan
+  "composer install". Yang tetap wajib: membuat database + import
+  config/database.sql, lalu menyesuaikan config/config.database.php.
+
 Seluruh perintah di file ini ditulis untuk dijalankan dari dalam folder
 proyek (folder yang berisi index.php, config/, panel/, vendor/).
 
